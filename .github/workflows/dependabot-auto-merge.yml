@@ -1,0 +1,69 @@
+name: Dependabot Auto Merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dependabot-auto-merge:
+    if: >
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.draft == false &&
+      contains(github.event.pull_request.labels.*.name, 'security')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+
+      - name: Reject major updates for human review
+        if: >
+          steps.metadata.outputs.update-type == 'version-update:semver-major' &&
+          github.event.action != 'synchronize'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "Dependabot security update was detected, but this PR is a major update and will not be auto-merged.\n\n- update_type: ${UPDATE_TYPE}\n- dependencies: ${DEPENDENCY_NAMES}\n\nPlease review it manually and confirm the full quality gate before merging."
+
+      - name: Stop auto merge for major updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "Major Dependabot security update. Leaving this PR for human review."
+
+      - name: Enable auto merge for safe Dependabot update
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          echo "Dependabot security update is eligible for auto-merge."
+          echo "update_type=${UPDATE_TYPE}"
+          echo "dependencies=${DEPENDENCY_NAMES}"
+          echo "Auto-merge will still wait for protected branch requirements, especially PR Check / quality-check."
+          gh pr merge "$PR_NUMBER" --squash --auto --delete-branch --match-head-commit "$HEAD_SHA"

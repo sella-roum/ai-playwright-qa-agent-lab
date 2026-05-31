@@ -1,0 +1,120 @@
+name: Agent Tick
+
+on:
+  schedule:
+    - cron: '3,13,23,33,43,53 * * * *'
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Optional command for the agent'
+        required: false
+        default: 'run-next'
+        type: choice
+        options:
+          - run-next
+          - pause
+          - resume
+          - refresh-knowledge
+          - summarize
+      auto_merge:
+        description: 'Enable auto merge for this run when quality gates pass'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: agent-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure git
+        run: |
+          git config user.name "ai-playwright-qa-agent[bot]"
+          git config user.email "ai-playwright-qa-agent[bot]@users.noreply.github.com"
+
+      - name: Checkout agent work branch
+        run: bash scripts/checkout-agent-branch.sh
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify OpenCode CLI
+        env:
+          OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
+        run: |
+          OPENCODE_CLI_COMMAND="${OPENCODE_CLI:-npx -y opencode-ai@latest}"
+          echo "Using OpenCode CLI command: ${OPENCODE_CLI_COMMAND}"
+          ${OPENCODE_CLI_COMMAND} --version
+
+      - name: Run one agent phase
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_ENABLE_EXA: '1'
+          OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
+          AGENT_ENABLE_OPENCODE: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '1' || '0' }}
+          AGENT_DRY_RUN: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '0' || '1' }}
+          AGENT_MODEL_DEFAULT: ${{ vars.AGENT_MODEL_DEFAULT }}
+          AGENT_MODEL_RESEARCH_DIRECTOR: ${{ vars.AGENT_MODEL_RESEARCH_DIRECTOR }}
+          AGENT_MODEL_APP_BUILDER: ${{ vars.AGENT_MODEL_APP_BUILDER }}
+          AGENT_MODEL_BROWSER_EXPLORER: ${{ vars.AGENT_MODEL_BROWSER_EXPLORER }}
+          AGENT_MODEL_SPEC_WRITER: ${{ vars.AGENT_MODEL_SPEC_WRITER }}
+          AGENT_MODEL_TEST_DESIGNER: ${{ vars.AGENT_MODEL_TEST_DESIGNER }}
+          AGENT_MODEL_TEST_WRITER: ${{ vars.AGENT_MODEL_TEST_WRITER }}
+          AGENT_MODEL_REPAIRER: ${{ vars.AGENT_MODEL_REPAIRER }}
+          AGENT_MODEL_REVIEWER: ${{ vars.AGENT_MODEL_REVIEWER }}
+          AGENT_MODEL_LEARNER: ${{ vars.AGENT_MODEL_LEARNER }}
+          AGENT_MODEL_KNOWLEDGE_UPDATER: ${{ vars.AGENT_MODEL_KNOWLEDGE_UPDATER }}
+          AGENT_MODEL_TEST_RUNNER: ${{ vars.AGENT_MODEL_TEST_RUNNER }}
+          AGENT_MODEL_TEST_DATA_MANAGER: ${{ vars.AGENT_MODEL_TEST_DATA_MANAGER }}
+          AGENT_MODEL_QUALITY_EVALUATOR: ${{ vars.AGENT_MODEL_QUALITY_EVALUATOR }}
+          AGENT_COMMAND: ${{ github.event.inputs.command || 'run-next' }}
+          AGENT_AUTO_MERGE: ${{ github.event.inputs.auto_merge == 'true' && '1' || vars.AGENT_AUTO_MERGE }}
+          CI: 'true'
+        run: npm run agent:tick
+
+      - name: Commit and open PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/commit-agent-branch.sh
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-evidence-${{ github.run_id }}
+          path: |
+            .agent/runs/
+            .agent/mcp-output/
+            specs/observed/
+            test-results/
+            playwright-report/
+          retention-days: 14

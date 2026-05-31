@@ -1,0 +1,19 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+.agent/tmp/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Keep detailed run logs as GitHub Actions artifacts instead of committing them.
+.agent/runs/*
+!.agent/runs/.gitkeep
+.agent/mcp-output/*
+!.agent/mcp-output/.gitkeep
+
+# Runtime-only coordination files created inside a single workflow run.
+.agent/runtime-*.json

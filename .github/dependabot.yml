@@ -1,0 +1,36 @@
+version: 2
+
+updates:
+  # Security-only npm updates for this research repository.
+  # Regular version update PRs are disabled to avoid PR noise and to keep the
+  # autonomous QA cycle focused on one agent PR at a time.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+      time: '04:00'
+      timezone: 'Asia/Tokyo'
+    open-pull-requests-limit: 0
+    labels:
+      - 'dependencies'
+      - 'security'
+      - 'dependabot'
+    commit-message:
+      prefix: 'deps'
+      include: 'scope'
+    groups:
+      npm-security-patch-and-minor:
+        applies-to: security-updates
+        dependency-type: 'development'
+        update-types:
+          - 'patch'
+          - 'minor'
+        patterns:
+          - '*'
+      npm-security-major:
+        applies-to: security-updates
+        dependency-type: 'development'
+        update-types:
+          - 'major'
+        patterns:
+          - '*'

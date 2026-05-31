@@ -1,0 +1,66 @@
+{
+  "mode": "active",
+  "cycle_id": "cycle-0001",
+  "phase": "SELECT_RESEARCH_TASK",
+  "current_issue": null,
+  "current_branch": "agent/autonomous-research",
+  "current_app_version": "0.2.0",
+  "current_target_url": null,
+  "last_tick_at": null,
+  "last_work_at": null,
+  "consecutive_failures": 0,
+  "max_consecutive_failures": 3,
+  "work_count_today": 0,
+  "max_work_count_per_day": 24,
+  "open_pr_limit": 1,
+  "human_override": {
+    "active": false,
+    "directive": null,
+    "requested_by": null,
+    "created_at": null
+  },
+  "knowledge_update": {
+    "last_light_update_at": null,
+    "last_deep_update_at": null,
+    "last_sources_checked": []
+  },
+  "quality_gate": {
+    "spec_required": true,
+    "test_required": true,
+    "playwright_must_pass": true,
+    "review_required": true
+  },
+  "work_count_date": null,
+  "completed_cycles": 0,
+  "previous_cycle_id": null,
+  "repair_attempts": 0,
+  "max_repair_attempts": 3,
+  "blocked_until_user_review": false,
+  "last_playwright_status": null,
+  "last_playwright_failed_at": null,
+  "last_playwright_passed_at": null,
+  "qa_knowledge_policy": {
+    "enabled": true,
+    "root": "qa-knowledge",
+    "update_when": ["spec_change", "test_design_change", "playwright_failure", "quality_review"]
+  },
+  "current_pr": null,
+  "auto_merge_enabled": false,
+  "pr_review_attempts": 0,
+  "max_pr_review_attempts": 3,
+  "last_pr_check_status": null,
+  "last_pr_check_failed_at": null,
+  "last_pr_check_passed_at": null,
+  "merge_strategy": "squash",
+  "branch_cleanup_required": false,
+  "max_inline_quality_repair_attempts": 3,
+  "blocked_reason": null,
+  "blocked_at": null,
+  "blocker_path": null,
+  "agent_pr_labels": {
+    "owned": "agent:owned",
+    "active": "agent:active",
+    "blocked": "agent:blocked",
+    "ready_to_merge": "agent:ready-to-merge"
+  }
+}

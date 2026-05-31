@@ -1,0 +1,179 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--isolated",
+        "--browser",
+        "chromium",
+        "--output-dir",
+        ".agent/mcp-output"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+  "permission": {
+    "read": "allow",
+    "grep": "allow",
+    "glob": "allow",
+    "edit": "deny",
+    "bash": "deny",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "skill": {
+      "*": "allow"
+    }
+  },
+  "agent": {
+    "research-director": {
+      "description": "研究サイクル全体を統括し、次フェーズと評価方針を決める。",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 8,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "app-builder": {
+      "description": "研究用アプリを小さく改善する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "browser-explorer": {
+      "description": "Playwright MCPで公開URLまたはローカルアプリをクリック探索し、観測結果を保存する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "spec-writer": {
+      "description": "観測ログを画面仕様とフロー仕様に整理する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "test-designer": {
+      "description": "仕様からテスト観点と優先度を設計する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "test-writer": {
+      "description": "仕様とテスト設計からPlaywright TestとPOMを実装する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "repairer": {
+      "description": "Playwright Test失敗時に原因を分類し、最小修正を行う。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "reviewer": {
+      "description": "Locator、待機、assertion、POM設計、仕様との整合性をレビューする。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "learner": {
+      "description": "実行結果からmemoryとskill-backlogを更新する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "knowledge-updater": {
+      "description": "外部情報を確認し、研究方針やskill改善候補へ反映する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "test-runner": {
+      "description": "Playwright Testを実行し、結果と証跡を確認する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "test-data-manager": {
+      "description": "IndexedDBデータセット、リセットシナリオ、再現可能なテストデータ戦略を管理する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    },
+    "quality-evaluator": {
+      "description": "QA成果物、アプリ品質、Playwrightテスト品質、知見蓄積状況を評価する。",
+      "mode": "subagent",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow",
+        "websearch": "allow"
+      }
+    }
+  }
+}

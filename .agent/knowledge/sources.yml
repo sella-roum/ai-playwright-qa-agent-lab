@@ -1,0 +1,15 @@
+sources:
+  playwright:
+    - name: Playwright Docs
+      url: https://playwright.dev/docs/intro
+    - name: Playwright Best Practices
+      url: https://playwright.dev/docs/best-practices
+  playwright_mcp:
+    - name: Microsoft Playwright MCP
+      url: https://github.com/microsoft/playwright-mcp
+  opencode:
+    - name: OpenCode Docs
+      url: https://opencode.ai/docs
+  github_actions:
+    - name: GitHub Actions Events
+      url: https://docs.github.com/en/actions/reference/events-that-trigger-workflows

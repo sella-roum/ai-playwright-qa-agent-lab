@@ -1,0 +1,38 @@
+{
+  "name": "ai-playwright-qa-agent-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/research-app"
+  ],
+  "scripts": {
+    "dev:research-app": "npm --workspace apps/research-app run dev",
+    "build:research-app": "npm --workspace apps/research-app run build",
+    "preview:research-app": "npm --workspace apps/research-app run preview",
+    "build": "npm run build:research-app",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:repo": "node scripts/validate-repo.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:headed": "playwright test --project=chromium --headed",
+    "test": "npm run test:unit && npm run test:e2e",
+    "quality:fix": "npm run format && npm run lint -- --fix",
+    "quality:check": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run lint:repo && npm run build && npm run test:e2e",
+    "agent:tick": "node scripts/agent-tick.mjs",
+    "agent:status": "node scripts/agent-status.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "latest",
+    "@types/node": "latest",
+    "eslint": "^10.4.1",
+    "prettier": "^3.8.3",
+    "typescript": "latest",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^4.1.7"
+  }
+}
