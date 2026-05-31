@@ -1,15 +1,15 @@
 # Agent Tick
 
-- Started: 2026-05-30T15:15:12.193Z
+- Started: 2026-05-31T16:05:16.513Z
 - Phase: SELECT_RESEARCH_TASK
-- Next phase: PLAN_APP_CHANGE
+- Next phase: SELECT_RESEARCH_TASK
 - Cycle: cycle-0001
 - Current PR: none
 - Agent: research-director
-- Model: not-run-yet
+- Model: deepseek-v4-flash-free
 - Command: run-next
-- Dry run: true
-- Status: success
+- Dry run: false
+- Status: failed
 - Repair attempts: 0/3
 - PR review attempts: 0/3
 - Auto merge enabled: false
@@ -18,4 +18,8 @@
 
 ## Details
 
-Dry run executed for SELECT_RESEARCH_TASK. Set OPENCODE_ZEN_API_KEY and AGENT_ENABLE_OPENCODE=1 to run OpenCode Zen.
+OpenCode process exited with non-zero code: 1
+Error: OpenCode process exited with non-zero code: 1
+at runOpenCode (file:///home/runner/work/ai-playwright-qa-agent-lab/ai-playwright-qa-agent-lab/scripts/agent-tick.mjs:524:11)
+at async runOpenCodePhase (file:///home/runner/work/ai-playwright-qa-agent-lab/ai-playwright-qa-agent-lab/scripts/agent-tick.mjs:394:5)
+at async file:///home/runner/work/ai-playwright-qa-agent-lab/ai-playwright-qa-agent-lab/scripts/agent-tick.mjs:180:24
