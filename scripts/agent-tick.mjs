@@ -6,7 +6,6 @@ import {
   nextPhase,
   nowIso,
   readJson,
-  runCommand,
   runCommandAllowFailure,
   safeStamp,
   startCommand,
@@ -490,11 +489,59 @@ async function runOpenCode({ agent, model, prompt, runDir, env, outputPrefix = '
   const parts = cli.split(' ').filter(Boolean);
   const command = parts[0];
   const args = [...parts.slice(1), 'run', '--model', model, '--agent', agent, '--dir', '.', prompt];
+  const heartbeatMs = Number(process.env.AGENT_OPENCODE_HEARTBEAT_MS || 60_000);
+  const intervalMs = Number.isFinite(heartbeatMs) && heartbeatMs > 0 ? heartbeatMs : 60_000;
+  const child = startCommand(command, args, { env });
+  const stopHeartbeat = startHeartbeat(
+    `[agent-tick] OpenCode is still running (agent=${agent}, model=${model})`,
+    intervalMs
+  );
 
-  const { stdout, stderr } = await runCommand(command, args, { env });
+  console.log(`[agent-tick] OpenCode start: agent=${agent}, model=${model}, at=${nowIso()}`);
+  child.child.stdout?.on('data', (chunk) => {
+    process.stdout.write(chunk.toString());
+  });
+  child.child.stderr?.on('data', (chunk) => {
+    process.stderr.write(chunk.toString());
+  });
+
+  const { code, signal } = await new Promise((resolve, reject) => {
+    child.child.once('error', reject);
+    child.child.once('close', (exitCode, exitSignal) => {
+      resolve({ code: typeof exitCode === 'number' ? exitCode : 1, signal: exitSignal });
+    });
+  });
+  stopHeartbeat();
+
+  const { stdout, stderr } = child.getOutput();
   await writeFile(`${runDir}/${outputPrefix}-stdout.txt`, stdout || '', 'utf8');
   await writeFile(`${runDir}/${outputPrefix}-stderr.txt`, stderr || '', 'utf8');
+
+  if (signal) {
+    throw new Error(`OpenCode process was terminated by signal: ${signal}`);
+  }
+  if (code !== 0) {
+    throw new Error(`OpenCode process exited with non-zero code: ${code}`);
+  }
+  console.log(`[agent-tick] OpenCode end: agent=${agent}, model=${model}, at=${nowIso()}`);
   return { stdout, stderr };
+}
+
+function startHeartbeat(message, intervalMs) {
+  let stopped = false;
+  let timer = null;
+
+  const tick = () => {
+    if (stopped) return;
+    console.log(`${message} at=${nowIso()}`);
+    timer = setTimeout(tick, intervalMs);
+  };
+
+  timer = setTimeout(tick, intervalMs);
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
 }
 
 async function runFullQualityGateWithInlineRepair({ state, runDir, model, phase, reason }) {
