@@ -39,6 +39,8 @@ jobs:
   tick:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
     steps:
       - uses: actions/checkout@v4
