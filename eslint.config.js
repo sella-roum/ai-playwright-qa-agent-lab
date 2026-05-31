@@ -8,6 +8,7 @@ export default tseslint.config(
       'apps/research-app/dist/**',
       'playwright-report/**',
       'test-results/**',
+      '.playwright-browsers/**',
       '.agent/mcp-output/**',
       '.agent/runs/**',
       'coverage/**'
