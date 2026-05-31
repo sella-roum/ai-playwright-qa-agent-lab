@@ -5,3 +5,4 @@ test-results
 .agent/mcp-output
 .agent/runs
 coverage
+.playwright-browsers
