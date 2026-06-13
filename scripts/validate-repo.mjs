@@ -13,6 +13,7 @@ const required = [
   'qa-knowledge/quality-evaluation/scorecard-template.md',
   '.opencode/skills/pr-quality-cycle/SKILL.md',
   'tests/unit/agent-lib.test.mjs',
+  'scripts/record-agent-tick-timeout.mjs',
   'eslint.config.js',
   'vitest.config.ts'
 ];
