@@ -1,5 +1,5 @@
 {
-  "mode": "paused",
+  "mode": "active",
   "cycle_id": "cycle-0001",
   "phase": "SELECT_RESEARCH_TASK",
   "current_issue": null,
@@ -8,7 +8,7 @@
   "current_target_url": null,
   "last_tick_at": "2026-06-13T13:21:37.930Z",
   "last_work_at": null,
-  "consecutive_failures": 3,
+  "consecutive_failures": 0,
   "max_consecutive_failures": 3,
   "work_count_today": 0,
   "max_work_count_per_day": 24,
