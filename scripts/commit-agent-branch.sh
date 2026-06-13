@@ -7,6 +7,10 @@ STATE_FILE=".agent/state.json"
 PHASE="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('${STATE_FILE}','utf8')); console.log(s.phase || '')")"
 HEAD_PHASE="$(git show "HEAD:${STATE_FILE}" 2>/dev/null | node -e "let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => { try { const s=JSON.parse(input || '{}'); console.log(s.phase || ''); } catch { console.log(''); } });" || true)"
 
+BLOCKED_UNTIL_USER_REVIEW="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('${STATE_FILE}','utf8')); console.log(s.blocked_until_user_review === true ? 'true' : 'false')")"
+CYCLE_ID="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('${STATE_FILE}','utf8')); console.log(s.cycle_id || '')")"
+CONSECUTIVE_FAILURES="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('${STATE_FILE}','utf8')); console.log(s.consecutive_failures || '0')")"
+
 AGENT_PR_LABELS=("agent:owned" "agent:active")
 AGENT_READY_LABEL="agent:ready-to-merge"
 AGENT_BLOCKED_LABEL="agent:blocked"
@@ -30,8 +34,7 @@ apply_agent_labels() {
 
   local labels="agent:owned,agent:active"
   if [[ "$PHASE" == "IDLE" || "$PHASE" == "MERGE_PR" || "$PHASE" == "WAITING_FOR_MANUAL_MERGE" ]]; then
-    labels=",${AGENT_READY_LABEL}"
-    labels="agent:owned,agent:active,agent:ready-to-merge"
+    labels="${labels},${AGENT_READY_LABEL}"
   fi
 
   if node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('${STATE_FILE}','utf8')); process.exit(s.blocked_until_user_review ? 0 : 1)"; then
@@ -55,14 +58,30 @@ if [[ -z "$(git status --porcelain)" ]]; then
   exit 0
 fi
 
-QUALITY_COMMAND=(npm run quality:check)
-QUALITY_LABEL="mandatory full quality gate"
+# === Conditional quality gate ===
+# Determine if full quality gate is needed based on changed file types
+CHANGED_FILES="$(git status --porcelain | awk '{print $NF}')"
 
-echo "Running $QUALITY_LABEL before pushing agent branch..."
-if ! "${QUALITY_COMMAND[@]}"; then
-  echo "$QUALITY_LABEL failed. Trying automatic formatter/fixer once, then re-running the full gate..."
-  npm run quality:fix || true
-  "${QUALITY_COMMAND[@]}"
+NEEDS_FULL_QUALITY="false"
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  case "$file" in
+    apps/*|tests/*|package.json|package-lock.json|pnpm-lock.yaml|vite.config.*|playwright.config.*|tsconfig*.json|eslint.config.*|scripts/*.mjs|scripts/*.js|.github/workflows/*)
+      NEEDS_FULL_QUALITY="true"
+      ;;
+  esac
+done <<< "$CHANGED_FILES"
+
+if [[ "$NEEDS_FULL_QUALITY" == "true" ]]; then
+  echo "Running full quality gate before pushing agent branch..."
+  if ! npm run quality:check; then
+    echo "Full quality gate failed. Trying automatic formatter/fixer once, then re-running..."
+    npm run quality:fix || true
+    npm run quality:check
+  fi
+else
+  echo "Docs/state-only changes detected. Skipping full quality gate for this agent tick."
+  npm run format:check
 fi
 
 git add .
@@ -96,11 +115,64 @@ if [[ -f "$RUNTIME_AUTO_MERGE_FILE" ]]; then
   exit 0
 fi
 
-if [[ "$PHASE" != "REVIEW_PR" && "$PHASE" != "FIX_PR_REVIEW" && "$PHASE" != "RUN_PR_CHECKS" && "$PHASE" != "MERGE_PR" && "$PHASE" != "WAITING_FOR_MANUAL_MERGE" && "$PHASE" != "CLEANUP_BRANCH" ]]; then
-  echo "Current phase is $PHASE. Skipping PR creation until CREATE_PR advances to REVIEW_PR."
+# === PR creation decision ===
+# Reviewable phases: phases where intermediate agent output is useful to review
+REVIEWABLE_PHASES=" PLAN_APP_CHANGE IMPLEMENT_APP EXPLORE_WITH_BROWSER WRITE_SPEC DESIGN_TESTS IMPLEMENT_PLAYWRIGHT RUN_PLAYWRIGHT REVIEW_QA_OUTPUT UPDATE_RESEARCH_MEMORY CREATE_PR REVIEW_PR FIX_PR_REVIEW RUN_PR_CHECKS MERGE_PR WAITING_FOR_MANUAL_MERGE CLEANUP_BRANCH "
+
+HAS_BLOCKER="false"
+if ls .agent/blockers/*.md >/dev/null 2>&1; then
+  HAS_BLOCKER="true"
+fi
+
+SHOULD_OPEN_OR_UPDATE_PR="false"
+if [[ "$REVIEWABLE_PHASES" == *" $PHASE "* ]]; then
+  SHOULD_OPEN_OR_UPDATE_PR="true"
+fi
+if [[ "$BLOCKED_UNTIL_USER_REVIEW" == "true" || "$HAS_BLOCKER" == "true" ]]; then
+  SHOULD_OPEN_OR_UPDATE_PR="true"
+fi
+
+if [[ "$SHOULD_OPEN_OR_UPDATE_PR" != "true" ]]; then
+  echo "Current phase is $PHASE. Not a reviewable phase and no blocker. Skipping PR creation."
   exit 0
 fi
 
+# === PR body generation ===
+PR_BODY_FILE=".agent/pr-body.md"
+{
+  echo "## Agent status"
+  echo ""
+  echo "- Current phase: ${PHASE}"
+  echo "- Cycle id: ${CYCLE_ID}"
+  echo "- Blocked until user review: ${BLOCKED_UNTIL_USER_REVIEW}"
+  echo "- Consecutive failures: ${CONSECUTIVE_FAILURES}"
+  echo ""
+  echo "## Latest summary"
+  echo ""
+  if [[ -f .agent/latest-summary.md ]]; then
+    cat .agent/latest-summary.md
+  else
+    echo "No latest summary available."
+  fi
+  echo ""
+  echo "## Blockers"
+  echo ""
+  if ls .agent/blockers/*.md >/dev/null 2>&1; then
+    for blocker_file in .agent/blockers/*.md; do
+      echo "- \`${blocker_file}\`"
+    done
+  else
+    echo "No blockers."
+  fi
+  echo ""
+  echo "## Review focus"
+  echo ""
+  echo "- Verify whether the agent's current phase output is useful."
+  echo "- Check blockers first if present."
+  echo "- Do not merge if the branch is blocked or quality checks are failing."
+} > "$PR_BODY_FILE"
+
+# === PR creation or update ===
 if command -v gh >/dev/null 2>&1; then
   ensure_agent_labels
   EXISTING_PR=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number' || true)
@@ -109,14 +181,15 @@ if command -v gh >/dev/null 2>&1; then
       --base "$BASE" \
       --head "$BRANCH" \
       --title "chore(agent): autonomous QA research cycle" \
-      --body-file ".agent/latest-summary.md" \
+      --body-file "$PR_BODY_FILE" \
       --label "agent:owned" \
       --label "agent:active"
     CREATED_PR=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number' || true)
     apply_agent_labels "$CREATED_PR"
   else
     apply_agent_labels "$EXISTING_PR"
-    echo "Existing agent PR #$EXISTING_PR found. Updating branch only; no repetitive PR comment."
+    gh pr edit "$EXISTING_PR" --body-file "$PR_BODY_FILE" >/dev/null 2>&1 || true
+    echo "Existing agent PR #$EXISTING_PR found. Updated PR body and branch."
   fi
 else
   echo "gh command is not available; skipped PR creation."
