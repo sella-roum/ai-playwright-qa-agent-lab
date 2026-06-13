@@ -38,9 +38,11 @@ concurrency:
 jobs:
   tick:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+      AGENT_TICK_TIMEOUT_MINUTES: '50'
+      HAS_OPENCODE_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '1' || '0' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify OpenCode CLI
+        if: ${{ env.HAS_OPENCODE_API_KEY == '1' }}
         env:
           OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
         run: |
@@ -74,6 +77,8 @@ jobs:
           ${OPENCODE_CLI_COMMAND} --version
 
       - name: Run one agent phase
+        id: agent_phase
+        timeout-minutes: 50
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
@@ -81,8 +86,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENCODE_ENABLE_EXA: '1'
           OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
-          AGENT_ENABLE_OPENCODE: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '1' || '0' }}
-          AGENT_DRY_RUN: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '0' || '1' }}
+          AGENT_ENABLE_OPENCODE: ${{ env.HAS_OPENCODE_API_KEY == '1' && '1' || '0' }}
+          AGENT_DRY_RUN: ${{ env.HAS_OPENCODE_API_KEY == '1' && '0' || '1' }}
           AGENT_MODEL_DEFAULT: ${{ vars.AGENT_MODEL_DEFAULT }}
           AGENT_MODEL_RESEARCH_DIRECTOR: ${{ vars.AGENT_MODEL_RESEARCH_DIRECTOR }}
           AGENT_MODEL_APP_BUILDER: ${{ vars.AGENT_MODEL_APP_BUILDER }}
@@ -102,8 +107,12 @@ jobs:
           CI: 'true'
         run: npm run agent:tick
 
+      - name: Record agent timeout blocker
+        if: ${{ failure() && steps.agent_phase.outcome == 'failure' }}
+        run: npm run agent:record-timeout
+
       - name: Commit and open PR
-        if: always()
+        if: ${{ always() && steps.agent_phase.outcome != 'skipped' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/commit-agent-branch.sh
@@ -116,6 +125,8 @@ jobs:
           path: |
             .agent/runs/
             .agent/mcp-output/
+            .agent/blockers/
+            .agent/latest-summary.md
             specs/observed/
             test-results/
             playwright-report/
