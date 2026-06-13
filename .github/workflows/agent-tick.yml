@@ -42,6 +42,7 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
       AGENT_TICK_TIMEOUT_MINUTES: '50'
+      HAS_OPENCODE_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY != '' && '1' || '0' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify OpenCode CLI
-        if: ${{ secrets.OPENCODE_ZEN_API_KEY != '' }}
+        if: ${{ env.HAS_OPENCODE_API_KEY == '1' }}
         env:
           OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
         run: |
