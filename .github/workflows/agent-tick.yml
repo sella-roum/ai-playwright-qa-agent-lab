@@ -41,6 +41,7 @@ jobs:
     timeout-minutes: 90
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+      AGENT_TICK_TIMEOUT_MINUTES: '50'
 
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +76,7 @@ jobs:
           ${OPENCODE_CLI_COMMAND} --version
 
       - name: Run one agent phase
+        timeout-minutes: 50
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
