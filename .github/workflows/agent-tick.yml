@@ -38,7 +38,7 @@ concurrency:
 jobs:
   tick:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
@@ -66,6 +66,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify OpenCode CLI
+        if: ${{ secrets.OPENCODE_ZEN_API_KEY != '' }}
         env:
           OPENCODE_CLI: ${{ vars.OPENCODE_CLI }}
         run: |
@@ -116,6 +117,8 @@ jobs:
           path: |
             .agent/runs/
             .agent/mcp-output/
+            .agent/blockers/
+            .agent/latest-summary.md
             specs/observed/
             test-results/
             playwright-report/
